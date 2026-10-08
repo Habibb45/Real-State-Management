@@ -7,7 +7,13 @@ const moneyFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
 });
 
-export function PropertyCard({ property }: { property: ApiProperty }) {
+export function PropertyCard({
+  property,
+  onRemoveFavorite,
+}: {
+  property: ApiProperty;
+  onRemoveFavorite?: (propertyId: number) => void;
+}) {
   const image =
     property.images?.find((item) => item.is_primary) ?? property.images?.[0];
 
@@ -58,12 +64,23 @@ export function PropertyCard({ property }: { property: ApiProperty }) {
             {property.status}
           </span>
         </div>
-        <Link
-          to={`/properties/${property.id}`}
-          className="inline-flex w-full items-center justify-center rounded-full bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-moss"
-        >
-          View details
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            to={`/properties/${property.id}`}
+            className="inline-flex flex-1 items-center justify-center rounded-full bg-ink px-4 py-3 text-sm font-bold text-white transition hover:bg-moss"
+          >
+            View details
+          </Link>
+          {onRemoveFavorite && (
+            <button
+              type="button"
+              onClick={() => onRemoveFavorite(property.id)}
+              className="rounded-full border border-ink/10 px-4 py-3 text-sm font-bold text-ink transition hover:border-red-200 hover:text-red-700"
+            >
+              Remove
+            </button>
+          )}
+        </div>
       </div>
     </article>
   );

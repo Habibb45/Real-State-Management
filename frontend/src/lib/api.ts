@@ -21,6 +21,22 @@ export const setAuthToken = (token: string | null) => {
   }
 };
 
+export const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (!axios.isAxiosError<{ message?: string; errors?: Record<string, string[]> }>(error)) {
+    return fallback;
+  }
+
+  const validationMessage = Object.values(error.response?.data?.errors ?? {})
+    .flat()
+    .find((message) => message);
+
+  return (
+    validationMessage ??
+    error.response?.data?.message ??
+    fallback
+  );
+};
+
 export interface AuthResponse {
   message: string;
   user: ApiUser;
@@ -58,9 +74,14 @@ export const propertyApi = {
 };
 
 export const favoritesApi = {
-  list: async () => (await api.get("/favorites")).data,
+  list: async () =>
+    (await api.get<{ data: ApiProperty[] }>("/favorites")).data,
   toggle: async (id: number) =>
-    (await api.post(`/favorites/${id}/toggle`)).data,
+    (
+      await api.post<{ favorited: boolean; message: string }>(
+        `/favorites/${id}/toggle`,
+      )
+    ).data,
 };
 
 export const contactsApi = {

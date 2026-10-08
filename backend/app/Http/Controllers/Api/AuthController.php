@@ -16,11 +16,13 @@ class AuthController extends Controller
 {
     public function register(RegisterRequest $request): JsonResponse
     {
+        $validated = $request->validated();
+
         $user = User::query()->create([
-            'name' => $request->string('name'),
-            'email' => $request->string('email'),
-            'phone' => $request->string('phone')->toString(),
-            'password' => Hash::make($request->string('password')),
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+            'phone' => $validated['phone'] ?? null,
+            'password' => Hash::make($validated['password']),
             'role' => 'user',
         ]);
 
@@ -37,9 +39,10 @@ class AuthController extends Controller
 
     public function login(LoginRequest $request): JsonResponse
     {
-        $user = User::query()->where('email', $request->string('email'))->first();
+        $validated = $request->validated();
+        $user = User::query()->where('email', $validated['email'])->first();
 
-        if (! $user || ! Hash::check($request->string('password'), $user->password)) {
+        if (! $user || ! Hash::check($validated['password'], $user->password)) {
             return response()->json([
                 'message' => 'The provided credentials are invalid.',
             ], 422);

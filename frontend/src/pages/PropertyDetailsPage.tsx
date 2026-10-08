@@ -1,15 +1,26 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import { contactsApi, favoritesApi, propertyApi } from "../lib/api";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+  contactsApi,
+  favoritesApi,
+  getApiErrorMessage,
+  propertyApi,
+} from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import type { ApiProperty } from "../types";
 
 export function PropertyDetailsPage() {
+  const navigate = useNavigate();
   const { id } = useParams();
   const { user } = useAuth();
   const [property, setProperty] = useState<ApiProperty | null>(null);
   const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [contactBusy, setContactBusy] = useState(false);
+  const [favoriteBusy, setFavoriteBusy] = useState(false);
+  const [contactNotice, setContactNotice] = useState("");
+  const [contactError, setContactError] = useState("");
+  const [favoriteNotice, setFavoriteNotice] = useState("");
+  const [favoriteError, setFavoriteError] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -22,7 +33,9 @@ export function PropertyDetailsPage() {
     event.preventDefault();
     if (!property) return;
 
-    setBusy(true);
+    setContactBusy(true);
+    setContactNotice("");
+    setContactError("");
     try {
       await contactsApi.create({
         property_id: property.id,
@@ -31,8 +44,37 @@ export function PropertyDetailsPage() {
         message,
       });
       setMessage("");
+      setContactNotice("Your enquiry has been sent to the property owner.");
+    } catch (error) {
+      setContactError(
+        getApiErrorMessage(error, "Unable to send your enquiry. Please try again."),
+      );
     } finally {
-      setBusy(false);
+      setContactBusy(false);
+    }
+  };
+
+  const handleFavorite = async () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+
+    if (!property) return;
+
+    setFavoriteBusy(true);
+    setFavoriteNotice("");
+    setFavoriteError("");
+    try {
+      const response = await favoritesApi.toggle(property.id);
+      setProperty({ ...property, is_favorited: response.favorited });
+      setFavoriteNotice(response.message);
+    } catch (error) {
+      setFavoriteError(
+        getApiErrorMessage(error, "Unable to update favorites. Please try again."),
+      );
+    } finally {
+      setFavoriteBusy(false);
     }
   };
 
@@ -77,11 +119,29 @@ export function PropertyDetailsPage() {
             <Detail label="Status" value={property.status} />
           </div>
           <button
-            onClick={() => void favoritesApi.toggle(property.id)}
-            className="rounded-full bg-ink px-5 py-3 text-sm font-bold text-white transition hover:bg-moss"
+            type="button"
+            onClick={() => void handleFavorite()}
+            disabled={favoriteBusy}
+            className="rounded-full bg-ink px-5 py-3 text-sm font-bold text-white transition hover:bg-moss disabled:opacity-60"
           >
-            Save favorite
+            {favoriteBusy
+              ? "Please wait..."
+              : property.is_favorited
+                ? "Remove from favorites"
+                : user
+                  ? "Save favorite"
+                  : "Sign in to save"}
           </button>
+          {favoriteNotice && (
+            <p className="mt-3 text-sm font-medium text-green-700" role="status">
+              {favoriteNotice}
+            </p>
+          )}
+          {favoriteError && (
+            <p className="mt-3 text-sm font-medium text-red-700" role="alert">
+              {favoriteError}
+            </p>
+          )}
         </div>
       </section>
 
@@ -91,15 +151,26 @@ export function PropertyDetailsPage() {
           <textarea
             value={message}
             onChange={(event) => setMessage(event.target.value)}
+            required
             className="min-h-44 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none focus:border-moss"
             placeholder="Tell the owner what you are looking for..."
           />
           <button
-            disabled={busy}
+            disabled={contactBusy}
             className="w-full rounded-full bg-moss px-5 py-3 text-sm font-bold text-white transition hover:bg-ink disabled:opacity-60"
           >
-            {busy ? "Sending..." : "Send enquiry"}
+            {contactBusy ? "Sending..." : "Send enquiry"}
           </button>
+          {contactNotice && (
+            <p className="text-sm font-medium text-green-700" role="status">
+              {contactNotice}
+            </p>
+          )}
+          {contactError && (
+            <p className="text-sm font-medium text-red-700" role="alert">
+              {contactError}
+            </p>
+          )}
         </form>
       </aside>
     </div>
